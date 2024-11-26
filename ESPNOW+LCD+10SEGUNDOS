@@ -1,0 +1,58 @@
+import network
+import espnow
+import machine
+from time import sleep
+from machine import Pin, SoftI2C
+from lcd_api import LcdApi
+from i2c_lcd import I2cLcd
+import time
+
+sta = network.WLAN(network.STA_IF)
+sta.active(True)
+
+esp = espnow.ESPNow()
+esp.active(True)
+
+
+# Configuración del LCD
+i2c_ADDR = 0x27
+totalRows = 2
+totalColumns = 16
+
+i2c = SoftI2C(scl=Pin(22), sda=Pin(21), freq=10000)  # Inicializa el I2C
+lcd = I2cLcd(i2c, i2c_ADDR, totalRows, totalColumns)
+
+# Función para desplazar texto
+def scroll_text(text, lcd, row, delay=0.1, direction="right"):
+    text = " " * totalColumns + text + " " * totalColumns  # Espacios para un efecto cíclico
+
+    if direction == "right":
+        # Desplazamiento de derecha a izquierda
+        for i in range(len(text) - totalColumns + 1):
+            lcd.move_to(0, row)  # Cursor al inicio
+            lcd.putstr(text[i:i + totalColumns])  # Muestra segmento
+            time.sleep(delay)
+    elif direction == "left":
+        # Desplazamiento de izquierda a derecha
+        for i in range(len(text) - totalColumns + 1):
+            lcd.move_to(0, row)  # Cursor al inicio
+            lcd.putstr(text[-(i + totalColumns):-i if i > 0 else None])  # Muestra segmento
+            time.sleep(delay)
+
+while True:
+    _, msg = esp.recv()
+    print(msg)
+    if msg:
+        if msg == b'ON':
+            text = "Carolina Campos--Veronica Tacuri" 
+            scroll_text(text, lcd, row=0, delay=0.05, direction="left")  # Cambia "left" o "right"
+            sleep(5)
+            
+        elif msg == b'OFF':
+            #text = "                                            " 
+            #scroll_text(text, lcd, row=0, delay=0.05, direction="left")  # Cambia "left" o "right"
+            #sleep(5)
+            lcd.clear()
+    else:
+        lcd.clear()
+        #print("Unknown message!")
